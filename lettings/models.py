@@ -13,6 +13,11 @@ class Address(models.Model):
     zip_code = models.PositiveIntegerField(validators=[MaxValueValidator(99999)])
     country_iso_code = models.CharField(max_length=3, validators=[MinLengthValidator(3)])
 
+    class Meta:
+        """Model options: fix the plural name displayed in the admin."""
+
+        verbose_name_plural = 'addresses'
+
     def __str__(self):
         """Return the address as 'number street'."""
         return f'{self.number} {self.street}'
