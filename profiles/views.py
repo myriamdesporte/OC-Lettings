@@ -1,6 +1,6 @@
 """Views of the profiles application."""
 
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 
 from .models import Profile
 
@@ -22,6 +22,6 @@ def index(request):
 # males
 def profile(request, username):
     """Display the details of the user identified by username."""
-    profile = Profile.objects.get(user__username=username)
+    profile = get_object_or_404(Profile, user__username=username)
     context = {'profile': profile}
     return render(request, 'profiles/profile.html', context)
