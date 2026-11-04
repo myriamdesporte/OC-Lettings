@@ -47,7 +47,7 @@ def profile(request, username):
         Http404: If no profile matches username.
     """
     try:
-        profile = Profile.objects.get(username=username)
+        profile = Profile.objects.get(user__username=username)
     except Profile.DoesNotExist:
         logger.warning("Profile not found: username=%s", username)
         raise Http404("Profile not found")
