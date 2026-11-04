@@ -1,8 +1,13 @@
 """Views of the profiles application."""
 
-from django.shortcuts import get_object_or_404, render
+import logging
+
+from django.http import Http404
+from django.shortcuts import render
 
 from .models import Profile
+
+logger = logging.getLogger(__name__)
 
 
 # Sed placerat quam in pulvinar commodo. Nullam laoreet consectetur ex, sed consequat libero
@@ -18,6 +23,7 @@ def index(request):
         HttpResponse: The rendered profiles list page.
     """
     profiles_list = Profile.objects.all()
+    logger.info("Displaying profiles list (%d profiles)", len(profiles_list))
     context = {'profiles_list': profiles_list}
     return render(request, 'profiles/index.html', context)
 
@@ -40,6 +46,12 @@ def profile(request, username):
     Raises:
         Http404: If no profile matches username.
     """
-    profile = get_object_or_404(Profile, user__username=username)
+    try:
+        profile = Profile.objects.get(username=username)
+    except Profile.DoesNotExist:
+        logger.warning("Profile not found: username=%s", username)
+        raise Http404("Profile not found")
+
+    logger.info("Displaying profile of %s", username)
     context = {'profile': profile}
     return render(request, 'profiles/profile.html', context)
