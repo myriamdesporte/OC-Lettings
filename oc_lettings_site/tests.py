@@ -1,5 +1,6 @@
 """Tests of the oc_lettings_site application: home page, error pages and admin."""
 
+import logging
 import pytest
 from django.test import Client
 from django.urls import resolve, reverse
@@ -55,3 +56,17 @@ def test_admin_shows_correct_plurals(admin_client):
     assert response.status_code == 200
     assert b'Addresses' in response.content
     assert b'Addresss' not in response.content
+
+
+def test_sentry_debug_view_logs_and_raises(rf, caplog):
+    """The Sentry test view writes an ERROR log then raises an error."""
+    with pytest.raises(ZeroDivisionError):
+        views.sentry_debug(rf.get('/sentry-debug/'))
+    assert 'Sentry test' in caplog.text
+    assert caplog.records[-1].levelno == logging.ERROR
+
+
+@pytest.mark.django_db
+def test_sentry_debug_url_hidden_when_debug_is_false(client):
+    """The Sentry test URL is not available when DEBUG is False."""
+    assert client.get('/sentry-debug/').status_code == 404

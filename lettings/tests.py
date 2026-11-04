@@ -1,5 +1,6 @@
 """Tests of the lettings application: models, URLs and views."""
 
+import logging
 import pytest
 from django.urls import resolve, reverse
 from pytest_django.asserts import assertTemplateUsed
@@ -75,7 +76,7 @@ def test_index_view_lists_lettings(client, letting):
 
     letting_url = reverse(
         'lettings:letting',
-        kwargs={'letting_id': letting.id},
+        kwargs={'letting_id': letting.pk},
     )
     assert f'href="{letting_url}"'.encode() in response.content
 
@@ -91,7 +92,7 @@ def test_index_view_without_lettings(client):
 @pytest.mark.django_db
 def test_letting_view_shows_details(client, letting):
     """The letting view renders the title and the full address."""
-    response = client.get(reverse('lettings:letting', kwargs={'letting_id': letting.id}))
+    response = client.get(reverse('lettings:letting', kwargs={'letting_id': letting.pk}))
     assert response.status_code == 200
     assertTemplateUsed(response, 'lettings/letting.html')
     assert response.context['title'] == letting.title
@@ -112,6 +113,24 @@ def test_letting_view_unknown_id_returns_404(client):
     assert response.status_code == 404
 
 
+# Logging
+
+@pytest.mark.django_db
+def test_letting_view_logs_info(client, letting, caplog):
+    """Displaying a letting writes an INFO log with its id and title."""
+    with caplog.at_level(logging.INFO, logger='lettings'):
+        client.get(reverse('lettings:letting', kwargs={'letting_id': letting.pk}))
+    assert f'Displaying letting {letting.pk} ({letting.title})' in caplog.text
+
+
+@pytest.mark.django_db
+def test_unknown_letting_logs_warning(client, caplog):
+    """An unknown letting id writes a WARNING log with the id."""
+    client.get(reverse('lettings:letting', kwargs={'letting_id': 999}))
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert any('letting_id=999' in r.getMessage() for r in warnings)
+
+
 # Integration
 
 @pytest.mark.django_db
@@ -119,7 +138,7 @@ def test_navigation_from_index_to_letting(client, letting):
     """Users can navigate from the lettings index to a letting detail page and back."""
     detail_url = reverse(
         'lettings:letting',
-        kwargs={'letting_id': letting.id},
+        kwargs={'letting_id': letting.pk},
     )
 
     index = client.get(reverse('lettings:index'))
