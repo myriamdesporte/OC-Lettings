@@ -1,5 +1,9 @@
+# Application
 django==3.0
+
+# Dev tools
 flake8==7.3.0
 flake8-html==0.4.3
 pytest==7.4.4
 pytest-django==4.5.2
+pytest-cov==7.1.0
