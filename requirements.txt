@@ -1,5 +1,7 @@
 # Application
 django==3.0
+python-dotenv==1.2.4
+sentry-sdk==2.73.0
 
 # Dev tools
 flake8==7.3.0

@@ -6,3 +6,7 @@ venv
 flake8-report/
 .coverage
 htmlcov/
+
+# Environment variables (secrets)
+.env
+
