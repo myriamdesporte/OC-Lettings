@@ -9,7 +9,14 @@ from .models import Profile
 # pulvinar eget. Fusc
 # faucibus, urna quis auctor pharetra, massa dolor cursus neque, quis dictum lacus d
 def index(request):
-    """Display the list of all profiles."""
+    """Display the list of all profiles.
+
+    Args:
+        request: The HTTP request.
+
+    Returns:
+        HttpResponse: The rendered profiles list page.
+    """
     profiles_list = Profile.objects.all()
     context = {'profiles_list': profiles_list}
     return render(request, 'profiles/index.html', context)
@@ -21,7 +28,18 @@ def index(request):
 # it. Nam aliquam dignissim congue. Pellentesque habitant morbi tristique senectus et netus et
 # males
 def profile(request, username):
-    """Display the details of the user identified by username."""
+    """Display the profile of a user identified by username.
+
+    Args:
+        request: The HTTP request.
+        username (str): Username of the profile owner.
+
+    Returns:
+        HttpResponse: The rendered profile page.
+
+    Raises:
+        Http404: If no profile matches username.
+    """
     profile = get_object_or_404(Profile, user__username=username)
     context = {'profile': profile}
     return render(request, 'profiles/profile.html', context)

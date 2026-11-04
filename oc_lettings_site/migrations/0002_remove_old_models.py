@@ -4,6 +4,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+    """Remove the old models."""
 
     dependencies = [
         ('oc_lettings_site', '0001_initial'),

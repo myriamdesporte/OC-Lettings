@@ -1,3 +1,5 @@
+"""WSGI entry point exposing the application for web servers."""
+
 import os
 
 from django.core.wsgi import get_wsgi_application

@@ -4,7 +4,12 @@ from django.db import migrations
 
 
 def copy_profiles_data(apps, schema_editor):
-    """Copy profiles from the old tables, keeping the same ids."""
+    """Copy profiles from the old table, keeping the same ids.
+
+    Args:
+        apps: Registry of the historical models.
+        schema_editor: Database schema editor (unused).
+    """
     OldProfile = apps.get_model('oc_lettings_site', 'Profile')
     Profile = apps.get_model('profiles', 'Profile')
 
@@ -19,7 +24,12 @@ def copy_profiles_data(apps, schema_editor):
 
 
 def restore_profiles_data(apps, schema_editor):
-    """Copy profiles back to the old tables (reverse migration)."""
+    """Copy profiles back to the old table (reverse migration).
+
+    Args:
+        apps: Registry of the historical models.
+        schema_editor: Database schema editor (unused).
+    """
     OldProfile = apps.get_model('oc_lettings_site', 'Profile')
     Profile = apps.get_model('profiles', 'Profile')
 
@@ -34,6 +44,7 @@ def restore_profiles_data(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    """Copy the profiles data from the old table."""
 
     dependencies = [
         ('profiles', '0001_initial'),

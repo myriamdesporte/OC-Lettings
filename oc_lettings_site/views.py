@@ -11,5 +11,12 @@ from django.shortcuts import render
 # Aliquam vitae erat ac orci placerat luctus. Nullam elementum urna nisi, pellentesque iaculis enim
 # cursus in. Praesent volutpat porttitor magna, non finibus neque cursus id.
 def index(request):
-    """Display the home page."""
+    """Display the home page.
+
+        Args:
+            request: The HTTP request.
+
+        Returns:
+            HttpResponse: The rendered home page.
+        """
     return render(request, 'index.html')
