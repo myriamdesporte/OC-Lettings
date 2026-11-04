@@ -4,7 +4,12 @@ from django.db import migrations
 
 
 def copy_lettings_data(apps, schema_editor):
-    """Copy address then lettings from the old tables, keeping the same ids."""
+    """Copy addresses then lettings from the old tables, keeping the same ids.
+
+    Args:
+        apps: Registry of the historical models.
+        schema_editor: Database schema editor (unused).
+    """
     OldAddress = apps.get_model('oc_lettings_site', 'Address')
     OldLetting = apps.get_model('oc_lettings_site', 'Letting')
     Address = apps.get_model('lettings', 'Address')
@@ -33,7 +38,12 @@ def copy_lettings_data(apps, schema_editor):
 
 
 def restore_lettings_data(apps, schema_editor):
-    """Copy address and lettings back to the old tables (reverse migration)."""
+    """Copy addresses and lettings back to the old tables (reverse migration).
+
+    Args:
+        apps: Registry of the historical models.
+        schema_editor: Database schema editor (unused).
+    """
     OldAddress = apps.get_model('oc_lettings_site', 'Address')
     OldLetting = apps.get_model('oc_lettings_site', 'Letting')
     Address = apps.get_model('lettings', 'Address')
@@ -62,6 +72,7 @@ def restore_lettings_data(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    """Copy the lettings data from the old tables."""
 
     dependencies = [
         ('lettings', '0001_initial'),

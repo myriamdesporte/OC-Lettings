@@ -1,0 +1,10 @@
+[run]
+source = .
+omit =
+    */tests.py
+    */migrations/*
+    venv/*
+
+[report]
+show_missing = True
+fail_under = 80

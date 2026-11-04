@@ -3,3 +3,6 @@
 venv
 .idea/
 *.backup.sqlite3
+flake8-report/
+.coverage
+htmlcov/
