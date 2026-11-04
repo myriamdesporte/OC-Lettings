@@ -53,6 +53,13 @@ Dans le reste de la documentation sur le développement local, il est supposé q
 - `source venv/bin/activate`
 - `pytest`
 
+#### Couverture de test
+
+- `cd /path/to/Python-OC-Lettings-FR`
+- `source venv/bin/activate`
+- `pytest --cov` (la commande échoue si la couverture est inférieure à 80 %)
+- Rapport HTML : `pytest --cov --cov-report=html`, puis ouvrir `htmlcov/index.html`
+
 #### Base de données
 
 - `cd /path/to/Python-OC-Lettings-FR`
