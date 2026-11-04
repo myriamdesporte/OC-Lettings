@@ -1,12 +1,20 @@
 """Django settings of the oc_lettings_site project."""
 
+import logging
 import os
-
+import sys
 from pathlib import Path
+
+import sentry_sdk
+from dotenv import load_dotenv
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from the .env file (never committed), if it exists.
+load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
@@ -116,3 +124,66 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+
+# Logging
+# https://docs.djangoproject.com/en/3.0/topics/logging/
+
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} [{levelname}] {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'oc_lettings_site': {'level': LOG_LEVEL},
+        'lettings': {'level': LOG_LEVEL},
+        'profiles': {'level': LOG_LEVEL},
+    },
+}
+
+
+# Sentry
+# https://docs.sentry.io/platforms/python/integrations/django/
+
+SENTRY_DSN = os.environ.get('SENTRY_DSN')
+TESTING = 'pytest' in sys.modules
+
+if SENTRY_DSN and not TESTING:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=os.environ.get('SENTRY_ENVIRONMENT', 'development'),
+        integrations=[
+            DjangoIntegration(),
+            # INFO logs and above: breadcrumbs and entries in Sentry "Logs",
+            # ERROR logs and above: issues (events) in Sentry.
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR,
+                sentry_logs_level=logging.INFO,
+            ),
+        ],
+        enable_logs=True,
+        traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0')),
+        send_default_pii=False,
+    )
