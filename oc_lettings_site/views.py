@@ -1,6 +1,10 @@
 """Views of the oc_lettings_site main application."""
 
+import logging
+
 from django.shortcuts import render
+
+logger = logging.getLogger(__name__)
 
 
 # Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque molestie quam lobortis leo
@@ -20,3 +24,18 @@ def index(request):
             HttpResponse: The rendered home page.
         """
     return render(request, 'index.html')
+
+
+def sentry_debug(request):
+    """Raise an error on purpose to check that Sentry captures it.
+
+    Only routed when DEBUG is True (see urls.py).
+
+    Args:
+        request: The HTTP request.
+
+    Raises:
+        ZeroDivisionError: Always.
+    """
+    logger.error("Sentry test: an error log sent on purpose")
+    return 1 / 0

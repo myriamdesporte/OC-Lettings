@@ -1,5 +1,6 @@
 """Tests of the profiles application: models, URLs and views."""
 
+import logging
 import pytest
 from django.contrib.auth.models import User
 from django.urls import resolve, reverse
@@ -104,6 +105,24 @@ def test_profile_view_unknown_username_returns_404(client):
     """The profile view returns a 404 for an unknown username."""
     response = client.get(reverse('profiles:profile', kwargs={'username': 'unknown'}))
     assert response.status_code == 404
+
+
+# Logging
+
+@pytest.mark.django_db
+def test_profile_view_logs_info(client, profile, caplog):
+    """Displaying a profile writes an INFO log with the username."""
+    with caplog.at_level(logging.INFO, logger='profiles'):
+        client.get(reverse('profiles:profile', kwargs={'username': profile.user.username}))
+    assert f'Displaying profile of {profile.user.username}' in caplog.text
+
+
+@pytest.mark.django_db
+def test_unknown_profile_logs_warning(client, caplog):
+    """An unknown username writes a WARNING log with the username."""
+    client.get(reverse('profiles:profile', kwargs={'username': 'nobody'}))
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert any('username=nobody' in r.getMessage() for r in warnings)
 
 
 # Integration
