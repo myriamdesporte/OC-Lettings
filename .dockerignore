@@ -1,0 +1,26 @@
+# Files and folders never copied into the Docker image.
+
+# Git and CI
+.git
+.github
+.gitignore
+
+# Python virtual environment and caches
+venv
+**/__pycache__
+**/*.pyc
+
+# Secrets: environment variables are given at runtime, never baked in the image
+.env
+
+# Tests and coverage reports
+.coverage
+htmlcov
+.pytest_cache
+
+# Generated static files (rebuilt inside the image by collectstatic)
+staticfiles
+
+# Editor settings
+.idea
+.vscode
