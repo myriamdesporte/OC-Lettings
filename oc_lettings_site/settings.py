@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import sentry_sdk
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -16,16 +17,51 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from the .env file (never committed), if it exists.
 load_dotenv(BASE_DIR / '.env')
 
-# Quick-start development settings - unsuitable for production
+# True when the code runs inside the test suite (pytest).
+TESTING = 'pytest' in sys.modules
+
+
+def env_bool(name, default=False):
+    """Read a boolean environment variable ('1', 'true', 'yes', 'on' mean True)."""
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def env_list(name, default=''):
+    """Read a comma-separated environment variable as a list of non-empty strings."""
+    return [item.strip() for item in os.environ.get(name, default).split(',') if item.strip()]
+
+
+# Deployment checklist
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'fp$9^593hsriajg$_%=5trot9g!1qa@ew(o-1#@=&4%=hp46(s'
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Disabled unless DJANGO_DEBUG is explicitly set (e.g. in the local .env file).
+DEBUG = env_bool('DJANGO_DEBUG', default=False)
 
-ALLOWED_HOSTS = []
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# A fixed, non-secret key is only accepted in development and in tests.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG or TESTING:
+        SECRET_KEY = 'django-insecure-development-only-key'
+    else:
+        raise ImproperlyConfigured(
+            'The DJANGO_SECRET_KEY environment variable is required when DEBUG is False.'
+        )
+
+ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1')
+# Render automatically provides the public host name of the service.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# The hosting platform terminates HTTPS and forwards requests over HTTP:
+# trust its header so that Django knows the original request was secure.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 
 # Application definition
@@ -44,6 +80,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves static files (CSS, JS, images) in production, right after security.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -125,6 +163,10 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+# WhiteNoise serves the files gathered by `collectstatic` in STATIC_ROOT,
+# compressed (gzip) for faster loading.
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+
 
 # Logging
 # https://docs.djangoproject.com/en/3.0/topics/logging/
@@ -167,7 +209,6 @@ LOGGING = {
 # https://docs.sentry.io/platforms/python/integrations/django/
 
 SENTRY_DSN = os.environ.get('SENTRY_DSN')
-TESTING = 'pytest' in sys.modules
 
 if SENTRY_DSN and not TESTING:
     sentry_sdk.init(
