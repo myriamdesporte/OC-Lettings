@@ -1,0 +1,81 @@
+# CI/CD pipeline of OC Lettings.
+# On every push: lint and test the code.
+# On master only: build and push the Docker image, then deploy it to Render.
+
+name: CI/CD
+
+on:
+  push:
+    branches: ['**']
+
+env:
+  # Docker Hub repository of the image : <username>/oc-lettings
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/oc-lettings
+
+jobs:
+  lint-and-test:
+    name: Lint and tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --requirement requirements.txt
+
+      - name: Lint with flake8
+        run: flake8
+
+      - name: Run tests with coverage
+        run: pytest --cov
+
+  build-and-push:
+    name: Build and push the Docker image
+    needs: lint-and-test
+    # Runs only on master; the deploy job inherits this through "needs"
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    name: Deploy on Render
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    # Only one deployment at a time: a new one waits for the current one.
+    concurrency: production
+    steps:
+      - name: Trigger the Render deployment
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          # Tell Render which image to deploy: the one built for this commit.
+          IMAGE_URL="docker.io/${IMAGE_NAME}:${GITHUB_SHA}"
+          curl --fail --silent --show-error --request POST \
+            --get --data-urlencode "imgURL=${IMAGE_URL}" \
+            "${RENDER_DEPLOY_HOOK_URL}"
