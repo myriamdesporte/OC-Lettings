@@ -10,3 +10,6 @@ htmlcov/
 # Environment variables (secrets)
 .env
 
+
+# Static files gathered by collectstatic (generated)
+staticfiles/

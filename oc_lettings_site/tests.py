@@ -1,11 +1,17 @@
 """Tests of the oc_lettings_site application: home page, error pages and admin."""
 
 import logging
+import os
+import subprocess
+import sys
+
 import pytest
+from django.conf import settings
 from django.test import Client
 from django.urls import resolve, reverse
 from pytest_django.asserts import assertTemplateUsed
 
+from . import settings as settings_module
 from . import views
 
 
@@ -70,3 +76,52 @@ def test_sentry_debug_view_logs_and_raises(rf, caplog):
 def test_sentry_debug_url_hidden_when_debug_is_false(client):
     """The Sentry test URL is not available when DEBUG is False."""
     assert client.get('/sentry-debug/').status_code == 404
+
+
+def test_env_bool(monkeypatch):
+    """env_bool reads true/false values and falls back to the default."""
+    monkeypatch.setenv('TEST_FLAG', 'True')
+    assert settings_module.env_bool('TEST_FLAG') is True
+    monkeypatch.setenv('TEST_FLAG', '0')
+    assert settings_module.env_bool('TEST_FLAG', default=True) is False
+    monkeypatch.delenv('TEST_FLAG')
+    assert settings_module.env_bool('TEST_FLAG', default=True) is True
+
+
+def test_env_list(monkeypatch):
+    """env_list splits on commas and ignores spaces and empty items."""
+    monkeypatch.setenv('TEST_HOSTS', ' a.com, b.com ,,')
+    assert settings_module.env_list('TEST_HOSTS') == ['a.com', 'b.com']
+    assert settings_module.env_list('MISSING_VARIABLE', default='x') == ['x']
+
+
+def run_settings(**env):
+    """Load the Django settings in a fresh process with only the given variables."""
+    # Empty SENTRY_DSN: a value from the local .env file must not enable Sentry here.
+    base = {
+        'PATH': os.environ['PATH'],
+        'DJANGO_SETTINGS_MODULE': 'oc_lettings_site.settings',
+        'SENTRY_DSN': '',
+    }
+    code = 'from django.conf import settings; print(settings.DEBUG, settings.ALLOWED_HOSTS)'
+    return subprocess.run(
+        [sys.executable, '-c', code], cwd=settings.BASE_DIR,
+        env={**base, **env}, capture_output=True, text=True,
+    )
+
+
+def test_production_settings_require_secret_key():
+    """In production, the site refuses to start without DJANGO_SECRET_KEY."""
+    result = run_settings(DJANGO_DEBUG='False', DJANGO_SECRET_KEY='')
+    assert result.returncode != 0
+    assert 'DJANGO_SECRET_KEY' in result.stderr
+
+
+def test_production_settings_read_environment():
+    """In production, settings come from the environment, including the Render host."""
+    result = run_settings(
+        DJANGO_DEBUG='False', DJANGO_SECRET_KEY='test-key',
+        DJANGO_ALLOWED_HOSTS='example.com', RENDER_EXTERNAL_HOSTNAME='app.onrender.com',
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "False ['example.com', 'app.onrender.com']"
