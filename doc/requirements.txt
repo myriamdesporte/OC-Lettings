@@ -1,0 +1,5 @@
+# Dependencies needed to build the documentation (locally and on Read the Docs).
+# The project dependencies are needed too: autodoc imports the Django code.
+--requirement ../requirements.txt
+sphinx==9.0.4
+sphinx-rtd-theme==3.1.0
