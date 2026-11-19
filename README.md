@@ -37,6 +37,7 @@ Dans le reste de la documentation sur le développement local, il est supposé q
 - `cd /path/to/Python-OC-Lettings-FR`
 - `source venv/bin/activate`
 - `pip install --requirement requirements.txt`
+- `cp env.example .env` (à faire une seule fois, voir [Variables d'environnement](#variables-denvironnement))
 - `python manage.py runserver`
 - Aller sur `http://localhost:8000` dans un navigateur.
 - Confirmer que le site fonctionne et qu'il est possible de naviguer (vous devriez voir plusieurs profils et locations).
@@ -83,12 +84,15 @@ Les données sensibles ne sont pas stockées dans le code : elles sont lues dans
 - `cp env.example .env`
 - Compléter les valeurs dans `.env` :
 
-| Variable | Rôle | Valeur par défaut |
-|----------|------|-------------------|
-| `SENTRY_DSN` | Clé (DSN) du projet Sentry. Vide : Sentry désactivé | (vide) |
-| `SENTRY_ENVIRONMENT` | Nom de l'environnement affiché dans Sentry | `development` |
-| `SENTRY_TRACES_SAMPLE_RATE` | Part des requêtes suivies en performance (0 à 1) | `0` |
-| `LOG_LEVEL` | Niveau de log des applications du projet | `INFO` |
+| Variable | Rôle | Valeur par défaut   |
+|----------|------|---------------------|
+| `DJANGO_DEBUG` | Mode debug (`True` en local uniquement, jamais en production) | `False`             |
+| `DJANGO_SECRET_KEY` | Clé secrète Django. Facultative si `DJANGO_DEBUG=True`, obligatoire sinon | (vide)  |
+| `DJANGO_ALLOWED_HOSTS` | Noms de domaine autorisés, séparés par des virgules | `localhost,127.0.0.1` |
+| `SENTRY_DSN` | Clé (DSN) du projet Sentry. Vide : Sentry désactivé | (vide)              |
+| `SENTRY_ENVIRONMENT` | Nom de l'environnement affiché dans Sentry | `development`       |
+| `SENTRY_TRACES_SAMPLE_RATE` | Part des requêtes suivies en performance (0 à 1) | `0`                 |
+| `LOG_LEVEL` | Niveau de log des applications du projet | `INFO`              |
 
 #### Surveillance avec Sentry et journalisation
 
@@ -105,7 +109,7 @@ Fonctionnement des logs (module `logging`, configuré dans `LOGGING` de `oc_lett
 - Logs `ERROR` et plus, et exceptions non gérées : créent une **issue** dans Sentry
 - Sentry n'est jamais activé pendant les tests (`pytest`)
 
-Vérifier l'intégration (uniquement avec `DEBUG = True`) :
+Vérifier l'intégration (uniquement avec `DJANGO_DEBUG=True`) :
 
 - Aller sur `http://localhost:8000/sentry-debug/` : la page provoque volontairement une erreur (division par zéro)
 - Une issue `ZeroDivisionError` et un log `Sentry test` apparaissent dans Sentry après quelques secondes
@@ -116,3 +120,70 @@ Utilisation de PowerShell, comme ci-dessus sauf :
 
 - Pour activer l'environnement virtuel, `.\venv\Scripts\Activate.ps1` 
 - Remplacer `which <my-command>` par `(Get-Command <my-command>).Path`
+
+## Déploiement
+
+### Fonctionnement général
+
+Le déploiement est automatisé par un pipeline CI/CD GitHub Actions (`.github/workflows/ci-cd.yml`), lancé à chaque `git push` :
+
+1. **Lint et tests** (toutes les branches) : installation de Python 3.11 et des dépendances, `flake8`, puis `pytest --cov` (échec si la couverture est inférieure à 80 %).
+2. **Conteneurisation** (branche `master` uniquement, si l'étape 1 a réussi) : construction de l'image Docker (`Dockerfile`) et envoi sur Docker Hub avec deux tags : le hash du commit et `latest`.
+3. **Déploiement** (branche `master` uniquement, si l'étape 2 a réussi) : appel du *deploy hook* de Render, qui récupère l'image du commit sur Docker Hub et la met en service.
+
+Sur les autres branches, seule l'étape 1 est exécutée.
+
+Dans l'image, le site est servi par **Gunicorn** et les fichiers statiques (CSS, images, admin) par **WhiteNoise**, après un `collectstatic` exécuté à la construction de l'image.
+
+### Configuration requise
+
+- Un compte **Docker Hub** et un *access token* (Account settings > Personal access tokens, droits *Read & Write*)
+- Un compte **Render**
+- Les **secrets GitHub** suivants (Settings > Secrets and variables > Actions > New repository secret) :
+
+| Secret | Contenu |
+|--------|---------|
+| `DOCKERHUB_USERNAME` | Nom d'utilisateur Docker Hub |
+| `DOCKERHUB_TOKEN` | *Access token* Docker Hub |
+| `RENDER_DEPLOY_HOOK_URL` | URL du *deploy hook* du service Render |
+
+- Les **variables d'environnement du service Render** (onglet Environment) :
+
+| Variable | Valeur |
+|----------|--------|
+| `DJANGO_SECRET_KEY` | Clé longue et aléatoire (voir la commande dans `env.example`) |
+| `DJANGO_DEBUG` | `False` |
+| `SENTRY_DSN` | DSN du projet Sentry |
+| `SENTRY_ENVIRONMENT` | `production` |
+
+`DJANGO_ALLOWED_HOSTS` n'est pas nécessaire sur Render : le nom de domaine public (`RENDER_EXTERNAL_HOSTNAME`) est ajouté automatiquement.
+
+### Étapes de déploiement
+
+Mise en place (une seule fois) :
+
+1. Ajouter les secrets `DOCKERHUB_USERNAME` et `DOCKERHUB_TOKEN` dans GitHub.
+2. Pousser sur `master` : les jobs de tests et de conteneurisation créent l'image `<utilisateur>/oc-lettings` sur Docker Hub (le job de déploiement échoue tant que le *deploy hook* n'existe pas, c'est normal).
+3. Sur Render : **New > Web Service > Existing image**, image `docker.io/<utilisateur>/oc-lettings:latest`, offre *Free*, puis renseigner les variables d'environnement ci-dessus.
+4. Dans le service Render, **Settings** : copier l'URL du **Deploy Hook** et l'ajouter dans le secret GitHub `RENDER_DEPLOY_HOOK_URL`. Vérifier que le déploiement automatique (*Auto-Deploy*) est désactivé : seul le pipeline déclenche les déploiements.
+
+Déploiements suivants : fusionner ou pousser sur `master`, le pipeline fait le reste. Suivre l'avancement dans l'onglet **Actions** de GitHub, puis dans l'onglet **Events** du service Render.
+
+### Lancer l'image en local avec Docker
+
+Une seule commande récupère l'image sur Docker Hub et lance le site sur `http://localhost:8000` :
+
+```bash
+docker run --rm -p 8000:8000 -e DJANGO_SECRET_KEY=change-me <utilisateur>/oc-lettings:latest
+```
+
+Remplacer <utilisateur> par le nom d'utilisateur Docker Hub (le même que le secret `DOCKER_USERNAME`).
+
+> **Mac avec puce Apple (M1, M2, M3...)** : le pipeline construit l'image pour des processeurs amd64.
+> Ajouter `--platform linux/amd64` après `--rm` :
+>
+> ```bash
+> docker run --rm --platform linux/amd64 -p 8000:8000 -e DJANGO_SECRET_KEY=change-me <utilisateur>/oc-lettings:latest
+> ```
+
+Pour une version précise, remplacer `latest` par le hash du commit. Pour activer Sentry, ajouter `-e SENTRY_DSN=<dsn>`.
