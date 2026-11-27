@@ -24,3 +24,7 @@ staticfiles
 # Editor settings
 .idea
 .vscode
+
+# Documentation (built and published by Read the Docs, not needed in the image)
+doc
+.readthedocs.yaml
