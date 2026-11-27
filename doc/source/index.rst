@@ -1,33 +1,32 @@
-Documentation OC Lettings
+OC Lettings Documentation
 =========================
 
-Documentation technique du site web d'**Orange County Lettings**, une start-up
-de location de biens immobiliers.
+Technical documentation for the **Orange County Lettings** website, a real estate rental start-up.
 
-Elle s'adresse aux développeurs qui reprennent le projet : installation,
-fonctionnement du code, utilisation et déploiement.
+| This documentation is intended for developers taking over the project.
+| It covers installation, code structure and functionality, usage, and deployment.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Prise en main
+   :caption: Getting Started
 
-   description
+   project_overview
    installation
-   demarrage_rapide
+   quickstart
    technologies
 
 .. toctree::
    :maxdepth: 2
-   :caption: Fonctionnement technique
+   :caption: Technical Overview
 
-   base_de_donnees
+   database
    interfaces
 
 .. toctree::
    :maxdepth: 2
-   :caption: Utilisation et exploitation
+   :caption: Usage and Deployment
 
-   guide_utilisation
-   deploiement
+   user_guide
+   deployment
 
-.. include:: liens_utiles.rst
+.. include:: useful_links.rst

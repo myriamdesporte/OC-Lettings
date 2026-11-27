@@ -47,7 +47,7 @@ autodoc_member_order = 'bysource'
 
 exclude_patterns = []
 
-language = 'fr'
+language = 'en'
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
